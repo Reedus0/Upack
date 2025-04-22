@@ -9,16 +9,12 @@ class Disassembler():
     __path: str
     __sample: Sample
     __md: Cs
-    __next_address: int
 
     def __init__(self, path: str) -> None:
         self.__path = path
         self.__sample = Sample(path)
 
         with pefile.PE(self.__path) as pe:
-            self.__next_address = pe.OPTIONAL_HEADER.AddressOfEntryPoint + \
-                pe.OPTIONAL_HEADER.ImageBase
-
             if (pe.FILE_HEADER.Machine == 0x014c):
                 self.__md = Cs(CS_ARCH_X86, CS_MODE_32)
             elif (pe.FILE_HEADER.Machine == 0x8664):
@@ -26,7 +22,7 @@ class Disassembler():
             else:
                 raise TypeError("Unknown processor architecrute!")
 
-    def getInstruction(self, address: int) -> bytes:
+    def getInstruction(self, address: int) -> str:
         physical_address = self.__sample.getPhysicalAddress(address)
 
         data = self.__sample.getData()
@@ -37,11 +33,4 @@ class Disassembler():
         except StopIteration:
             raise ValueError(f"Can't disassemble address {hex(address)}!")
 
-        print("0x%x:\t%s\t%s" % (instruction.address,
-              instruction.mnemonic, instruction.op_str))
-
-        self.__next_address = address + len(instruction.bytes)
-        return instruction.bytes
-
-    def getNextInstruction(self) -> bytes:
-        return self.getInstruction(self.__next_address)
+        return instruction.mnemonic + " " + instruction.op_str

@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 from Grabber.logs.logger import initLogging, log
 
 from disassembler import Disassembler
-from debuger import Debuger
+from debugger import Debugger
 
 
 def main():
@@ -17,11 +17,20 @@ def main():
         print(f"Usage: {sys.argv[0]} sample")
         exit(1)
 
-    debuger = Debuger(os.environ["SAMPLE_PATH"] + "/" + sys.argv[1])
+    debugger = Debugger(os.environ["SAMPLE_PATH"] + "/" + sys.argv[1])
     disassembler = Disassembler(os.environ["SAMPLE_PATH"] + "/" + sys.argv[1])
 
-    for i in range(100):
-        disassembler.getNextInstruction()
+    while (1):
+        try:
+            mnemonic, next_address = debugger.getNextInstruction()
+            print(mnemonic)
+            print(disassembler.getInstruction(next_address))
+            if (disassembler.getInstruction(next_address) != mnemonic):
+                print(disassembler.getInstruction(next_address), mnemonic)
+        except Exception:
+            break
+
+    # debugger.stopDebugger()
 
 
 if __name__ == "__main__":
