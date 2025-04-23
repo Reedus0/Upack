@@ -1,6 +1,8 @@
 import os
 import sys
 
+from time import time
+
 from dotenv import load_dotenv
 from Grabber.logs.logger import initLogging, log
 
@@ -20,17 +22,21 @@ def main():
     debugger = Debugger(os.environ["SAMPLE_PATH"] + "/" + sys.argv[1])
     disassembler = Disassembler(os.environ["SAMPLE_PATH"] + "/" + sys.argv[1])
 
+    start = time()
+
     while (1):
         try:
             mnemonic, next_address = debugger.getNextInstruction()
-            print(mnemonic)
-            print(disassembler.getInstruction(next_address))
-            if (disassembler.getInstruction(next_address) != mnemonic):
-                print(disassembler.getInstruction(next_address), mnemonic)
+            if (next_address < 0x7F0000000000):
+                disassemled_instruction = disassembler.getInstruction(
+                    next_address)
+                if (disassemled_instruction and disassemled_instruction != mnemonic):
+                    print(
+                        f"{next_address:#0{16}x}: {mnemonic:{" "}<40} {disassemled_instruction}")
         except Exception:
             break
 
-    # debugger.stopDebugger()
+    print(f"diff = {time() - start}")
 
 
 if __name__ == "__main__":
