@@ -28,12 +28,15 @@ def main():
         try:
             mnemonic, next_address = debugger.getNextInstruction()
             if (next_address < 0x7F0000000000):
+                # print(
+                #     f"{next_address:#0{16}x}: {mnemonic:{" "}<40}")
                 disassemled_instruction = disassembler.getInstruction(
                     next_address)
                 if (disassemled_instruction and disassemled_instruction != mnemonic):
                     print(
                         f"{next_address:#0{16}x}: {mnemonic:{" "}<40} {disassemled_instruction}")
-        except Exception:
+        except Exception as e:
+            log(10, str(e))
             break
 
     print(f"diff = {time() - start}")

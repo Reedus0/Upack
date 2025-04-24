@@ -31,6 +31,6 @@ class Disassembler():
         try:
             instruction = next(self.__md.disasm(data, address, 1))
         except StopIteration:
-            raise ValueError(f"Can't disassemble address {hex(address)}!")
+            return ("")
 
         return instruction.mnemonic + " " + instruction.op_str
