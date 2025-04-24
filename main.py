@@ -22,7 +22,7 @@ def main():
     debugger = Debugger(os.environ["SAMPLE_PATH"] + "/" + sys.argv[1])
     disassembler = Disassembler(os.environ["SAMPLE_PATH"] + "/" + sys.argv[1])
 
-    start = time()
+    result = 0
 
     while (1):
         try:
@@ -35,11 +35,12 @@ def main():
                 if (disassemled_instruction and disassemled_instruction != mnemonic):
                     print(
                         f"{next_address:#0{16}x}: {mnemonic:{" "}<40} {disassemled_instruction}")
+                    result += 1
         except Exception as e:
             log(10, str(e))
             break
 
-    print(f"diff = {time() - start}")
+    print("result: " + str(result))
 
 
 if __name__ == "__main__":

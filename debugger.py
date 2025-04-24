@@ -19,18 +19,9 @@ class Debugger():
         self.__dbg.bp_del(self.__next_address)
 
         if (self.__next_address > 0x7F0000000000):
-            self.__dbg.context.EFlags |= py3dbg.defines.EFLAGS_TRAP
-            self.__dbg.set_thread_context(self.__dbg.context)
-
             return py3dbg.defines.DBG_EXCEPTION_HANDLED
 
-        try:
-            data = self.__dbg.read_process_memory(self.__next_address, 16)
-        except Exception:
-            self.__dbg.context.EFlags |= py3dbg.defines.EFLAGS_TRAP
-            self.__dbg.set_thread_context(self.__dbg.context)
-
-            return py3dbg.defines.DBG_EXCEPTION_HANDLED
+        data = self.__dbg.read_process_memory(self.__next_address, 16)
 
         try:
             instruction = next(self.__md.disasm(data, self.__next_address, 1))
