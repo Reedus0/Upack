@@ -13,14 +13,24 @@ class Debugger():
     __md: Cs
     __next_address: int
     __cache: dict
+    __wordsize: int
 
     def __handleBreak(self, _: py3dbg.pydbg) -> int:
-        self.__next_address = self.__dbg.context.Rip
+        if (self.__wordsize == 32):
+            self.__next_address = self.__dbg.context.Eip
+        elif (self.__wordsize == 64):
+            self.__next_address = self.__dbg.context.Rip
+
         self.__dbg.bp_del(self.__next_address)
 
         if (self.__next_address > 0x7F0000000000):
             return py3dbg.defines.DBG_EXCEPTION_HANDLED
 
+        if (self.__wordsize == 32):
+            if (self.__next_address > 0x70000000):
+                return py3dbg.defines.DBG_EXCEPTION_HANDLED
+
+        assert self.__next_address, "Can't read address 0!"
         data = self.__dbg.read_process_memory(self.__next_address, 16)
 
         try:
@@ -28,9 +38,6 @@ class Debugger():
         except StopIteration:
             raise ValueError(
                 f"Can't disassemble address {hex(self.__next_address)}!")
-
-        # print(
-        #     f"in {self.__next_address:#0{16}x}: {instruction.mnemonic + " " + instruction.op_str}")
 
         if (instruction.mnemonic == "call" or instruction.mnemonic[0] == "j" or instruction.mnemonic[:3] == "rep"):
             self.__dbg.bp_set(self.__next_address + len(instruction.bytes))
@@ -59,33 +66,39 @@ class Debugger():
         self.__dbg = py3dbg.pydbg()
         self.__cache = dict()
 
+        with pefile.PE(self.__path) as pe:
+            if (pe.FILE_HEADER.Machine == 0x014c):
+                self.__wordsize = 32
+                self.__md = Cs(CS_ARCH_X86, CS_MODE_32)
+            elif (pe.FILE_HEADER.Machine == 0x8664):
+                self.__wordsize = 64
+                self.__md = Cs(CS_ARCH_X86, CS_MODE_64)
+            else:
+                raise TypeError("Unsupported processor architecrute!")
+
         self.__dbg.set_callback(
             py3dbg.defines.EXCEPTION_SINGLE_STEP, self.__handleBreak)
         self.__dbg.set_callback(
             py3dbg.defines.EXCEPTION_BREAKPOINT, self.__handleBreak)
 
-        self.__dbg.load(path.encode(), show_window=True)
+        self.__dbg.load(path.encode(), show_window=False)
 
         self.__next_address = self.getEntry()
         self.__dbg.bp_set(self.__next_address)
-
-        with pefile.PE(self.__path) as pe:
-            if (pe.FILE_HEADER.Machine == 0x014c):
-                self.__md = Cs(CS_ARCH_X86, CS_MODE_32)
-            elif (pe.FILE_HEADER.Machine == 0x8664):
-                self.__md = Cs(CS_ARCH_X86, CS_MODE_64)
-            else:
-                raise TypeError("Unsupported processor architecrute!")
 
     def getEntry(self) -> int:
         thread = self.__dbg.enumerate_threads()[0]
         handle = self.__dbg.open_thread(thread)
 
-        ntdll = ctypes.CDLL("ntdll")
+        if (self.__wordsize == 32):
+            ntdll = ctypes.CDLL("C:\\Windows\\SysWOW64\\ntdll.dll")
+            dwStartAddress = ctypes.c_uint32()
+        elif (self.__wordsize == 64):
+            dwStartAddress = ctypes.c_uint64()
+            ntdll = ctypes.CDLL("C:\\Windows\\System32\\ntdll.dll")
 
         NtQueryInformationThread = ntdll.NtQueryInformationThread
 
-        dwStartAddress = ctypes.c_uint64()
         NtQueryInformationThread(
             handle,
             9,
@@ -102,7 +115,15 @@ class Debugger():
 
         self.__dbg.debug_event_iteration()
 
+        if (self.__next_address > 0x7F0000000000):
+            return self.getNextInstruction()
+
+        if (self.__wordsize == 32):
+            if (self.__next_address > 0x70000000):
+                return self.getNextInstruction()
+
         try:
+            assert self.__next_address, "Can't read address 0!"
             data = self.__dbg.read_process_memory(self.__next_address, 16)
         except Exception:
             return ("", self.__next_address)
