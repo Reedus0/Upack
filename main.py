@@ -20,7 +20,8 @@ def main():
         exit(1)
 
     debugger = Debugger(os.environ["SAMPLE_PATH"] + "/" + sys.argv[1])
-    disassembler = Disassembler(os.environ["SAMPLE_PATH"] + "/" + sys.argv[1])
+    disassembler = Disassembler(
+        os.environ["SAMPLE_PATH"] + "/" + sys.argv[1], debugger.getEntry())
 
     result = 0
 

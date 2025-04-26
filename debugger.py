@@ -30,7 +30,7 @@ class Debugger():
             if (self.__next_address > 0x70000000):
                 return py3dbg.defines.DBG_EXCEPTION_HANDLED
 
-        assert self.__next_address, "Can't read address 0!"
+        assert self.__next_address, "Can't read address 0x0!"
         data = self.__dbg.read_process_memory(self.__next_address, 16)
 
         try:
@@ -90,12 +90,8 @@ class Debugger():
         thread = self.__dbg.enumerate_threads()[0]
         handle = self.__dbg.open_thread(thread)
 
-        if (self.__wordsize == 32):
-            ntdll = ctypes.CDLL("C:\\Windows\\SysWOW64\\ntdll.dll")
-            dwStartAddress = ctypes.c_uint32()
-        elif (self.__wordsize == 64):
-            dwStartAddress = ctypes.c_uint64()
-            ntdll = ctypes.CDLL("C:\\Windows\\System32\\ntdll.dll")
+        dwStartAddress = ctypes.c_size_t()
+        ntdll = ctypes.CDLL("ntdll")
 
         NtQueryInformationThread = ntdll.NtQueryInformationThread
 
@@ -123,7 +119,7 @@ class Debugger():
                 return self.getNextInstruction()
 
         try:
-            assert self.__next_address, "Can't read address 0!"
+            assert self.__next_address, "Can't read address 0x0!"
             data = self.__dbg.read_process_memory(self.__next_address, 16)
         except Exception:
             return ("", self.__next_address)
