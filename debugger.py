@@ -1,9 +1,12 @@
+import subprocess
+import os
+
 import pefile
 import ctypes
 import py3dbg
 import py3dbg.defines
 
-from capstone import *
+from capstone import Cs, CS_ARCH_X86, CS_MODE_64, CS_MODE_32
 
 
 class Debugger():
@@ -86,6 +89,22 @@ class Debugger():
         self.__next_address = self.getEntry()
         self.__dbg.bp_set(self.__next_address)
 
+    def dumpProcess(self, address: int) -> None:
+        full_dump_path = os.environ["DUMP_PATH"] + "/" + str(self.__dbg.pid)
+
+        try:
+            os.makedirs(full_dump_path)
+        except FileExistsError:
+            pass
+
+        subprocess.call(
+            f"{os.environ["PD_PATH"]}/pd64.exe -pid {self.__dbg.pid} -o {full_dump_path}")
+
+        assert address, "Can't read address 0x0!"
+        data = self.__dbg.read_process_memory(address, 4096)
+        with open(full_dump_path + "/" + hex(address), "wb") as file:
+            file.write(data)
+
     def getEntry(self) -> int:
         thread = self.__dbg.enumerate_threads()[0]
         handle = self.__dbg.open_thread(thread)
@@ -107,7 +126,7 @@ class Debugger():
 
     def getNextInstruction(self) -> tuple[str, int]:
         if (not self.__dbg.debugger_active):
-            raise Exception("Program has exited!")
+            raise ChildProcessError("Program has exited!")
 
         self.__dbg.debug_event_iteration()
 
@@ -129,5 +148,8 @@ class Debugger():
         except StopIteration:
             raise ValueError(
                 f"Can't disassemble address {hex(self.__next_address)}!")
+
+        if (instruction.mnemonic == "int3"):
+            return self.getNextInstruction()
 
         return (instruction.mnemonic + " " + instruction.op_str, self.__next_address)

@@ -1,13 +1,30 @@
 import os
 import sys
-
-from time import time
+import re
 
 from dotenv import load_dotenv
 from Grabber.logs.logger import initLogging, log
 
 from disassembler import Disassembler
 from debugger import Debugger
+
+
+def compare(first, second):
+    if (first == second):
+        return True
+
+    number_regex = r".*\[?(0x[\dabcdef]{1,8})\]?.*"
+
+    first_match = re.search(number_regex, first)
+    second_match = re.search(number_regex, second)
+
+    if (not first_match or not second_match):
+        return False
+
+    first_number = int(first_match[1], 16)
+    second_number = int(second_match[1], 16)
+
+    return first_number & 0xFFF == second_number & 0xFFF
 
 
 def main():
@@ -24,19 +41,24 @@ def main():
         os.environ["SAMPLE_PATH"] + "/" + sys.argv[1], debugger.getEntry())
 
     result = 0
+    dumped = []
 
     while (1):
         try:
             mnemonic, next_address = debugger.getNextInstruction()
-            # print(
-            #     f"{next_address:#0{16}x}: {mnemonic}")
             disassemled_instruction = disassembler.getInstruction(
                 next_address)
-            if (disassemled_instruction and disassemled_instruction != mnemonic):
+            # print(
+            #     f"{next_address:#0{16}x}: {mnemonic:{" "}<40}")
+            if (disassemled_instruction and not compare(disassemled_instruction, mnemonic)):
+                padded_address = next_address & 0xFFFFFFFFFFFFF000
+                if (padded_address not in dumped):
+                    debugger.dumpProcess(padded_address)
+                    dumped.append(padded_address)
                 print(
                     f"{next_address:#0{16}x}: {mnemonic:{" "}<40} {disassemled_instruction}")
                 result += 1
-        except Exception as e:
+        except ChildProcessError as e:
             log(10, str(e))
             break
 
