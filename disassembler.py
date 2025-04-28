@@ -2,19 +2,15 @@ import re
 import pefile
 from capstone import *
 
-from Grabber.config.sample import Sample
-
 
 class Disassembler():
 
     __path: str
-    __sample: Sample
     __md: Cs
     __offset: int
 
     def __init__(self, path: str, aslr_entry: int) -> None:
         self.__path = path
-        self.__sample = Sample(path)
 
         with pefile.PE(self.__path) as pe:
             self.__offset = aslr_entry - \
@@ -28,8 +24,27 @@ class Disassembler():
             else:
                 raise TypeError("Unknown processor architecrute!")
 
+    def getPhysicalAddress(self, virutal_address: int) -> int:
+        try:
+            with pefile.PE(self.__path) as pe:
+                for section in pe.sections:
+
+                    section_address = section.VirtualAddress
+                    section_size = section.Misc_VirtualSize
+
+                    if (section_address <= virutal_address < section_address + section_size + pe.OPTIONAL_HEADER.ImageBase):
+                        physical_address = section.PointerToRawData + \
+                            (virutal_address - section_address -
+                             pe.OPTIONAL_HEADER.ImageBase)
+                        if (physical_address < 0):
+                            physical_address += pe.OPTIONAL_HEADER.ImageBase
+                        return physical_address
+                return 0
+        except FileNotFoundError:
+            return virutal_address
+
     def getInstruction(self, address: int) -> str:
-        physical_address = self.__sample.getPhysicalAddress(
+        physical_address = self.getPhysicalAddress(
             address - self.__offset)
 
         data = self.__sample.getData()

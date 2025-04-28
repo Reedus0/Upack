@@ -1,4 +1,3 @@
-Grabber
 pefile
 capstone
 py3dbg
