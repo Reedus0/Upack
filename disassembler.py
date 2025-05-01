@@ -1,6 +1,5 @@
-import re
 from pefile import PE, SectionStructure
-from capstone import *
+from capstone import Cs, CS_ARCH_X86, CS_MODE_64, CS_MODE_32
 
 
 class Disassembler():
@@ -33,7 +32,6 @@ class Disassembler():
 
     def getPhysicalAddress(self, virutal_address: int) -> int:
         for section in self.__sections:
-
             section_address = section.VirtualAddress
             section_size = section.Misc_VirtualSize
 

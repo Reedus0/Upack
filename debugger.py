@@ -49,12 +49,11 @@ class Debugger():
         try:
             instruction = next(self.__md.disasm(
                 instruction_address, self.__next_address, 1))
+            self.__next_instruction = instruction.mnemonic + \
+                " " + instruction.op_str
         except StopIteration:
-            raise ValueError(
-                f"Can't disassemble address {hex(self.__next_address)}!")
-
-        self.__next_instruction = instruction.mnemonic + \
-            " " + instruction.op_str
+            self.__next_instruction = ""
+            return py3dbg.defines.DBG_EXCEPTION_HANDLED
 
         if (self.__next_instruction[:4] == "call" or self.__next_instruction[0] == "j" or self.__next_instruction[:3] == "rep"):
             self.__dbg.bp_set(self.__next_address + len(instruction.bytes))
@@ -113,9 +112,9 @@ class Debugger():
             pass
 
         subprocess.call(
-            f"{os.environ["PD_PATH"]}/pd64.exe -a {address} -pid {self.__dbg.pid} -o {full_dump_path}", stdout=subprocess.PIPE)
+            f"{os.environ["PD_PATH"]}/pd64.exe -a {address} -pid {self.__dbg.pid} -o {full_dump_path}", stdout=subprocess.DEVNULL)
         subprocess.call(
-            f"{os.environ["PD_PATH"]}/pd64.exe -pid {self.__dbg.pid} -o {full_dump_path}", stdout=subprocess.PIPE)
+            f"{os.environ["PD_PATH"]}/pd64.exe -pid {self.__dbg.pid} -o {full_dump_path}", stdout=subprocess.DEVNULL)
 
     def dumpBinary(self, address: int) -> None:
         full_dump_path = os.environ["DUMP_PATH"] + "/" + str(self.__dbg.pid)

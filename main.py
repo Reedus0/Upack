@@ -32,6 +32,8 @@ def main():
     parser = argparse.ArgumentParser()
 
     parser.add_argument("sample", type=str, help="Sample name")
+    parser.add_argument("--all", type=str, help="Print all instructions",
+                        action=argparse.BooleanOptionalAction)
     parser.add_argument("--pd", help="Enable memroy pd64 dump",
                         action=argparse.BooleanOptionalAction)
     parser.add_argument("--dump", help="Enable binary dump",
@@ -54,8 +56,9 @@ def main():
             mnemonic, next_address = debugger.getNextInstruction()
             disassemled_instruction = disassembler.getInstruction(
                 next_address)
-            # print(
-            #     f"{next_address:#0{16}x}: {mnemonic:{" "}<40}")
+            if (args.all):
+                print(
+                    f"{next_address:#0{16}x}: {mnemonic:{" "}<40}")
             if (mnemonic and disassemled_instruction and not compare(disassemled_instruction, mnemonic)):
                 padded_address = next_address & 0xFFFFFFFFFFFFF000
                 if (padded_address not in dumped):
@@ -76,8 +79,4 @@ def main():
 
 
 if __name__ == "__main__":
-    try:
-        main()
-    except Exception as e:
-        print(str(e))
-        exit(1)
+    main()
