@@ -1,5 +1,5 @@
 import re
-import pefile
+from pefile import PE, SectionStructure
 from capstone import *
 
 
@@ -8,14 +8,18 @@ class Disassembler():
     __path: str
     __md: Cs
     __offset: int
+    __data: bytes
+    __sections: list[SectionStructure]
 
     def __init__(self, path: str, aslr_entry: int) -> None:
         self.__path = path
 
-        with pefile.PE(self.__path) as pe:
+        with PE(self.__path) as pe:
             self.__offset = aslr_entry - \
                 (pe.OPTIONAL_HEADER.AddressOfEntryPoint +
                  pe.OPTIONAL_HEADER.ImageBase)
+            self.__sections = pe.sections
+            self.__image_base = pe.OPTIONAL_HEADER.ImageBase
 
             if (pe.FILE_HEADER.Machine == 0x014c):
                 self.__md = Cs(CS_ARCH_X86, CS_MODE_32)
@@ -24,30 +28,29 @@ class Disassembler():
             else:
                 raise TypeError("Unknown processor architecrute!")
 
+        with open(path, "rb") as file:
+            self.__data = file.read()
+
     def getPhysicalAddress(self, virutal_address: int) -> int:
-        try:
-            with pefile.PE(self.__path) as pe:
-                for section in pe.sections:
+        for section in self.__sections:
 
-                    section_address = section.VirtualAddress
-                    section_size = section.Misc_VirtualSize
+            section_address = section.VirtualAddress
+            section_size = section.Misc_VirtualSize
 
-                    if (section_address <= virutal_address < section_address + section_size + pe.OPTIONAL_HEADER.ImageBase):
-                        physical_address = section.PointerToRawData + \
-                            (virutal_address - section_address -
-                             pe.OPTIONAL_HEADER.ImageBase)
-                        if (physical_address < 0):
-                            physical_address += pe.OPTIONAL_HEADER.ImageBase
-                        return physical_address
-                return 0
-        except FileNotFoundError:
-            return virutal_address
+            if (section_address <= virutal_address < section_address + section_size + self.__image_base):
+                physical_address = section.PointerToRawData + \
+                    (virutal_address - section_address -
+                     self.__image_base)
+                if (physical_address < 0):
+                    physical_address += self.__image_base
+                return physical_address
+        return 0
 
     def getInstruction(self, address: int) -> str:
         physical_address = self.getPhysicalAddress(
             address - self.__offset)
 
-        data = self.__sample.getData()
+        data = self.__data
         data = data[physical_address:physical_address+16]
 
         try:

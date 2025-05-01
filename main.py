@@ -1,9 +1,9 @@
 import os
-import sys
+import time
 import re
+import argparse
 
 from dotenv import load_dotenv
-from Grabber.logs.logger import initLogging, log
 
 from disassembler import Disassembler
 from debugger import Debugger
@@ -29,18 +29,24 @@ def compare(first, second):
 
 def main():
 
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument("sample", type=str, help="Sample name")
+    parser.add_argument("--pd", help="Enable memroy pd64 dump",
+                        action=argparse.BooleanOptionalAction)
+    parser.add_argument("--dump", help="Enable binary dump",
+                        action=argparse.BooleanOptionalAction)
+
+    args = parser.parse_args()
+
     load_dotenv()
-    initLogging(0, os.environ["LOG_PATH"])
 
-    if (len(sys.argv) < 2):
-        print(f"Usage: {sys.argv[0]} sample")
-        exit(1)
-
-    debugger = Debugger(os.environ["SAMPLE_PATH"] + "/" + sys.argv[1])
+    debugger = Debugger(os.environ["SAMPLE_PATH"] + "/" + args.sample)
     disassembler = Disassembler(
-        os.environ["SAMPLE_PATH"] + "/" + sys.argv[1], debugger.getEntry())
+        os.environ["SAMPLE_PATH"] + "/" + args.sample, debugger.getEntry())
 
     result = 0
+    start_time = time.time()
     dumped = []
 
     while (1):
@@ -50,24 +56,28 @@ def main():
                 next_address)
             # print(
             #     f"{next_address:#0{16}x}: {mnemonic:{" "}<40}")
-            if (disassemled_instruction and not compare(disassemled_instruction, mnemonic)):
+            if (mnemonic and disassemled_instruction and not compare(disassemled_instruction, mnemonic)):
                 padded_address = next_address & 0xFFFFFFFFFFFFF000
                 if (padded_address not in dumped):
-                    debugger.dumpProcess(padded_address)
+                    if (args.pd):
+                        debugger.dumpPD(padded_address)
+                    if (args.dump):
+                        debugger.dumpBinary(padded_address)
                     dumped.append(padded_address)
+
                 print(
                     f"{next_address:#0{16}x}: {mnemonic:{" "}<40} {disassemled_instruction}")
                 result += 1
         except ChildProcessError as e:
-            log(10, str(e))
+            print(str(e))
             break
 
-    print("result: " + str(result))
+    print(f"time: {time.time() - start_time}, unpacked: {result}")
 
 
 if __name__ == "__main__":
     try:
         main()
     except Exception as e:
-        log(30, str(e))
+        print(str(e))
         exit(1)
