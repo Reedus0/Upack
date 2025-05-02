@@ -10,9 +10,11 @@ pip install -r requirements.txt
 
 # Переенные среды
 
+```
 SAMPLE_PATH - путь до папки с сэмлами
 DUMP_PATH - путь до папки с дампами
 PD_PATH - путь до pd64.exe
+```
 
 # Использование 
 
