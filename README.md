@@ -8,7 +8,7 @@
 pip install -r requirements.txt
 ```
 
-# Переенные среды
+# Переменные среды
 
 ```
 SAMPLE_PATH - путь до папки с сэмлами
